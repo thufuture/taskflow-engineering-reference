@@ -44,11 +44,11 @@ FastAPI (app/main.py)
 
 Handler tạo query Todo, thêm predicate khi có `is_done` hoặc `priority`, sắp xếp `created_at.desc()`, rồi serialize toàn bộ kết quả. Chưa có pagination.
 
-## Luồng PATCH
+## Luồng cập nhật một phần
 
 Handler tải entity hoặc trả `404`. `model_dump(exclude_unset=True)` chỉ lấy field client thật sự gửi. Sau khi gán field, handler commit và refresh. Field bị bỏ qua giữ nguyên.
 
-## Transaction và nhất quán
+## Giao dịch và tính nhất quán
 
 - Mỗi request dùng session riêng từ `get_db`.
 - Mutation commit một lần.
@@ -58,23 +58,23 @@ Handler tải entity hoặc trả `404`. `model_dump(exclude_unset=True)` chỉ 
 
 Nếu feature cần nhiều mutation atomic, giữ chúng trong cùng session và chỉ commit sau khi mọi invariant đạt.
 
-## Startup và schema
+## Khởi động và lược đồ dữ liệu
 
 Startup gọi `init_db` rồi `Base.metadata.create_all`. Cơ chế này chỉ tạo table thiếu, không thể thay thế migration để rename cột, backfill hoặc rollback. Phải thêm Alembic trước schema change production.
 
-## Concurrency
+## Xử lý đồng thời
 
 Route và SQLAlchemy hiện dùng synchronous API; FastAPI chạy sync handler trong thread pool. SQLite phù hợp local và write thấp nhưng có thể khóa khi nhiều writer. Khi có contention thật, đánh giá PostgreSQL thay vì tăng timeout tùy tiện.
 
-## Security boundary
+## Ranh giới bảo mật
 
 Mọi caller có thể thao tác mọi Todo. Wildcard CORS chỉ phù hợp môi trường tham chiếu local. Trước Internet công cộng cần authn, authz, CORS allowlist, TLS, secret management và request limits.
 
-## Observability
+## Khả năng quan sát
 
 Có health endpoint, access log và exception log của Uvicorn. Chưa có DB readiness, metrics, trace, correlation ID hoặc audit event.
 
-## Failure mode
+## Các dạng lỗi
 
 | Lỗi | Biểu hiện | Kiểm tra đầu tiên |
 |---|---|---|
@@ -84,11 +84,10 @@ Có health endpoint, access log và exception log của Uvicorn. Chưa có DB re
 | SQLite locked | 500 | Process ghi đồng thời, transaction dài |
 | Port bận | không start | Dừng process hoặc đổi port |
 
-## Invariant kiến trúc
+## Bất biến kiến trúc
 
 1. Pydantic định nghĩa contract public.
 2. Session theo request, không lưu global.
 3. Test không dùng `todo.db` của developer.
 4. Schema change cần migration strategy.
 5. Tài liệu phân biệt rõ hiện trạng và kế hoạch.
-

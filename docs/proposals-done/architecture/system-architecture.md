@@ -17,7 +17,7 @@ TaskFlow là modular monolith FastAPI. Request đi từ router qua Pydantic sche
 - `database.py`: engine/session.
 - `tests`: behavior evidence.
 
-## Request flow
+## Luồng xử lý yêu cầu
 
 Create validate trước mutation, commit một lần và refresh entity. List áp filter tùy chọn và newest-first ordering. PATCH chỉ cập nhật field được gửi. Delete xóa vĩnh viễn.
 

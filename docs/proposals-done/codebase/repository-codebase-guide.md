@@ -1,4 +1,4 @@
-# Hướng dẫn codebase và source layout
+# Hướng dẫn mã nguồn và cấu trúc thư mục
 
 ## Thứ tự đọc
 
@@ -8,7 +8,7 @@
 
 Thêm field phải cập nhật ORM, create/update/read schema, migration plan, API docs và test. Thêm filter phải dùng typed query parameter, chỉ áp predicate khi có giá trị và test filter kết hợp.
 
-## Dependency direction
+## Chiều phụ thuộc
 
 ```text
 main -> routes -> schemas/models/database
@@ -17,7 +17,6 @@ tests -> public app + isolated fixtures
 
 Không import route vào model/database. Không giữ session global.
 
-## Debug
+## Gỡ lỗi
 
 Reproduce nhỏ nhất, đọc status/detail, xác nhận database đích, trace handler, đối chiếu schema, kiểm tra transaction rồi thêm failing regression test trước khi sửa.
-

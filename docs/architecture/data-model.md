@@ -1,6 +1,6 @@
 # Mô hình dữ liệu
 
-## Entity Todo
+## Thực thể Todo
 
 | Field | Kiểu | Bắt buộc khi tạo | Ý nghĩa |
 |---|---|---:|---|
@@ -14,7 +14,7 @@
 
 Khai báo persistence chuẩn nằm trong `app/models.py`; validation API nằm trong `app/schemas.py`. Khi đổi field phải review cả hai.
 
-## Vai trò schema
+## Vai trò lược đồ
 
 - `TodoCreate`: dữ liệu client được gửi khi tạo.
 - `TodoUpdate`: field mutable dạng optional để PATCH phân biệt bỏ qua.
@@ -22,7 +22,7 @@ Khai báo persistence chuẩn nằm trong `app/models.py`; validation API nằm 
 
 Không trả ORM object từ endpoint mới nếu thiếu response model, vì field database thêm sau có thể bị lộ ngoài ý muốn.
 
-## Invariant đã enforce
+## Bất biến đã được cưỡng chế
 
 - priority thuộc enum hợp lệ;
 - create bắt buộc title;
@@ -30,7 +30,7 @@ Không trả ORM object từ endpoint mới nếu thiếu response model, vì fi
 - is_done và priority có default;
 - endpoint xử lý ID không tồn tại.
 
-## Giả định chưa enforce đầy đủ
+## Giả định chưa được cưỡng chế đầy đủ
 
 - title nên có nội dung, không chỉ khoảng trắng;
 - timestamp nên được hiểu thống nhất theo UTC;
@@ -43,7 +43,7 @@ Nếu giả định thành yêu cầu, phải thêm validation và test.
 
 Hiện không có foreign key hoặc relationship. Todo chưa có owner, project, label, comment hoặc dependency. Thêm các khái niệm này sẽ ảnh hưởng auth và delete semantics, cần ADR và migration.
 
-## Checklist thêm field
+## Danh sách kiểm tra khi thêm trường
 
 1. Xác định ý nghĩa, null và omission.
 2. Cập nhật SQLAlchemy model.
@@ -54,4 +54,3 @@ Hiện không có foreign key hoặc relationship. Todo chưa có owner, project
 7. Test create, read, PATCH, invalid input và row cũ.
 
 Ví dụ thêm `due_at` phải trả lời timezone, có cho phép quá khứ, có thể clear bằng null, cần filter/sort gì và backfill row cũ ra sao.
-

@@ -1,4 +1,4 @@
-# Quy ước coding và review
+# Quy ước viết mã và rà soát
 
 ## Mục tiêu
 
@@ -21,14 +21,13 @@ Quy ước giúp code TaskFlow dễ đọc, dễ test và tránh thay đổi API
 - PATCH dùng `exclude_unset=True`.
 - Breaking change cần tài liệu và regression test.
 
-## Database
+## Cơ sở dữ liệu
 
 - Session theo request.
 - Mutation liên quan phải nằm cùng transaction.
 - Không dùng `create_all` thay migration production.
 - Test dùng database in-memory cô lập.
 
-## Commit và review
+## Bản ghi thay đổi và rà soát
 
 Commit nhỏ theo một mục đích. Reviewer kiểm tra contract, transaction, negative test, secret, compatibility và tài liệu. Không approve khi chỉ test happy path.
-

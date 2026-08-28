@@ -1,4 +1,4 @@
-# Thiết lập môi trường local
+# Thiết lập môi trường trên máy cá nhân
 
 ## Yêu cầu
 
@@ -21,7 +21,7 @@ python -m pip install -r requirements.txt
 
 Nếu PowerShell chặn script, dùng cmd với `.venv\Scripts\activate.bat` hoặc điều chỉnh execution policy theo quy định máy.
 
-## Cấu hình database
+## Cấu hình cơ sở dữ liệu
 
 Ứng dụng chỉ đọc `DATABASE_URL` từ process environment và không tự load file `.env`.
 
@@ -33,7 +33,7 @@ $env:DATABASE_URL="sqlite:///./todo.db"
 
 Không commit `.env`. `.env.example` chỉ chứa giá trị local an toàn.
 
-## Chạy test trước
+## Chạy kiểm thử trước
 
 ```powershell
 pytest -q
@@ -41,7 +41,7 @@ pytest -q
 
 Test override `get_db` và dùng SQLite in-memory, không ghi vào `todo.db`.
 
-## Chạy server
+## Chạy máy chủ
 
 ```powershell
 uvicorn app.main:app --reload
@@ -49,7 +49,7 @@ uvicorn app.main:app --reload
 
 Khi startup, `init_db` gọi `create_all`. Đây không phải migration system.
 
-## Smoke test
+## Kiểm thử nhanh
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
@@ -74,7 +74,6 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/todos -ContentType app
 | `422` | Payload sai contract | Đọc `detail` và schema |
 | SQLite locked | Nhiều process ghi | Dừng server trùng, kiểm tra transaction |
 
-## Checklist hoàn tất
+## Danh sách kiểm tra hoàn tất
 
 Test pass; health trả OK; OpenAPI mở được; CRUD hoạt động; không có secret hay database được stage.
-
