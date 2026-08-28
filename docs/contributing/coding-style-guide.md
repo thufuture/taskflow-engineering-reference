@@ -6,6 +6,8 @@ Quy ước giúp code TaskFlow dễ đọc, dễ test và tránh thay đổi API
 
 ## Python
 
+Mọi thay đổi hành vi phải đi kèm kiểm thử hồi quy mô tả đúng trường hợp từng gây lỗi. Tên kiểm thử cần thể hiện điều kiện đầu vào và kết quả mong đợi để người rà soát hiểu ý định mà không phải đọc toàn bộ phần cài đặt.
+
 - Dùng type hint cho function public.
 - Handler ngắn, thể hiện rõ load, validate, mutate, commit và response.
 - Không giữ SQLAlchemy session ở global scope.
