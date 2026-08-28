@@ -1,94 +1,41 @@
-# Operations Runbook
+# Runbook vận hành
 
-## Scope
+## Phạm vi
 
-This runbook covers the current local/reference deployment. It does not imply production readiness.
+Áp dụng cho local/tham chiếu, không khẳng định production readiness.
 
-## Start the service
-
-From the repository root with dependencies installed:
+## Khởi động và xác minh
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Expected endpoint: `http://127.0.0.1:8000`.
+1. `GET /health` trả `200`.
+2. `/docs` hiển thị OpenAPI.
+3. `GET /todos` trả mảng JSON.
+4. Khi cần kiểm tra write, tạo rồi xóa một Todo dùng thử.
 
-## Verify service state
+Health chỉ kiểm tra process, không bảo đảm database.
 
-1. Call `GET /health` and expect `200` with `{"status":"ok"}`.
-2. Open `/docs` and confirm OpenAPI renders.
-3. Call `GET /todos` and confirm a JSON array.
-4. For write verification, create a disposable todo and then delete it.
+## Cấu hình
 
-The health endpoint verifies process liveness only. A successful health response does not prove every database operation will succeed.
+Service đọc `DATABASE_URL`. Với SQLite path tương đối, vị trí file phụ thuộc working directory. Không in credential khi debug.
 
-## Configuration
+## Triage
 
-The service reads `DATABASE_URL` from the process environment. If absent, it uses the SQLite default defined in `app/database.py`. Confirm the effective working directory because a relative SQLite path is resolved from the process context.
+- **Không start:** đọc traceback đầu; kiểm tra venv, dependency, port, DATABASE_URL, driver và quyền file.
+- **422:** đọc `detail`, vị trí field và giá trị; đối chiếu `app/schemas.py`.
+- **404:** kiểm tra path, ID và database đang kết nối.
+- **500:** ghi commit SHA, endpoint, payload đã che dữ liệu, loại DB và traceback; kiểm tra connection/schema/lock; thêm regression test.
+- **Database locked:** tìm process dùng file, dừng dev server trùng, kiểm tra session; đánh giá PostgreSQL nếu cần concurrent writes.
 
-Do not print credentials while diagnosing a non-SQLite URL. Record the database type and host separately from secrets.
+## Backup và rollback
 
-## Incident triage
+Dừng writer trước khi copy SQLite. Đây không phải backup production. App-only rollback về revision đã test; schema rollback bằng migration chứ không dùng `create_all`; data defect phải backup trước repair.
 
-### API does not start
+## Evidence sự cố
 
-1. Read the first traceback rather than later cascading errors.
-2. Confirm the virtual environment and dependency installation.
-3. Verify port 8000 is available.
-4. Check `DATABASE_URL` syntax and driver availability.
-5. Confirm the process can create/open the SQLite file directory.
+Timestamp/timezone, commit SHA, lệnh start, môi trường đã che secret, method/path/status, input nhỏ nhất và traceback đầu tiên.
 
-### Requests return `422`
+Sau sự cố phải ghi root cause, thêm test, cập nhật runbook/ADR và kiểm tra secret không lọt vào log.
 
-This usually indicates contract validation, not infrastructure failure. Inspect the `detail` array for field location, error type, and received value. Compare it with `app/schemas.py` and the API contract.
-
-### Requests return `404`
-
-Confirm both route path and resource ID. A missing todo is expected domain behavior. Also verify the application is connected to the database you believe it is using.
-
-### Requests return `500`
-
-Capture the traceback, endpoint, sanitized payload shape, and database target type. Check for connection/open errors, invalid schema state, or SQLite locking. Add a regression test once the cause is known.
-
-### SQLite reports “database is locked”
-
-1. Identify other running processes using the same file.
-2. Stop duplicate development servers if safe.
-3. Confirm handlers are not holding sessions beyond a request.
-4. Reassess whether the workload requires PostgreSQL rather than increasing arbitrary timeouts.
-
-## Backup and restore for local SQLite
-
-For valuable local data, stop writers before copying the database file. A filesystem copy during active writes may be inconsistent. Restore by placing the verified copy at the configured path before startup.
-
-This is not a production backup strategy. A production database requires automated backups, retention, restore drills, monitoring, and an agreed recovery point/time objective.
-
-## Rollback guidance
-
-- Application-only change: deploy the previously tested revision.
-- Contract change: verify clients remain compatible before rollback.
-- Schema change: do not rely on `create_all`; use a tested migration downgrade or forward fix.
-- Data mutation defect: preserve evidence and take a backup before repair.
-
-## Logs and evidence
-
-Uvicorn access logs provide method, path, and status. Exception tracebacks appear in server output. The application currently has no correlation ID, structured event log, metric, trace, or audit trail.
-
-When reporting an incident, include:
-
-- timestamp and timezone;
-- code revision;
-- command used to start the service;
-- sanitized environment facts;
-- request method/path and response status;
-- smallest reproducible input;
-- full first traceback without secrets.
-
-## Post-incident checklist
-
-- document root cause rather than only the symptom;
-- add regression coverage;
-- update this runbook if diagnosis was unclear;
-- record architectural follow-up in an ADR when appropriate;
-- verify no credential or sensitive todo data entered logs or tickets.

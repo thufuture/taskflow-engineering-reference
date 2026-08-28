@@ -1,87 +1,65 @@
-# Access and Security Guide
+# Hướng dẫn truy cập và bảo mật
 
-## Current posture
+## Hiện trạng
 
-TaskFlow is a local reference application. It has no authentication or authorization and must not be exposed directly to the public internet. Every caller who can reach the API can read, create, modify, and delete all todos.
+TaskFlow là ứng dụng tham chiếu local, chưa có authentication hoặc authorization. Bất kỳ caller nào truy cập API đều có thể đọc, tạo, sửa và xóa mọi Todo. Không expose trực tiếp ra Internet.
 
 ## Trust boundary
 
 ```text
-Trusted local client -> TaskFlow API -> configured database
+Client local được tin cậy -> TaskFlow API -> Database cấu hình
 ```
 
-There is no implemented user identity, tenant boundary, role model, or row ownership. Adding a login page alone would not solve this; enforcement must occur at API endpoints and query boundaries.
+Không có identity, tenant, role hoặc row ownership. Chỉ thêm login UI không giải quyết được; enforcement phải nằm tại API và query boundary.
 
-## Configuration inventory
+## Cấu hình
 
-| Setting | Purpose | Secret? | Safe repository value |
-|---|---|---:|---|
-| `DATABASE_URL` | SQLAlchemy connection URL | potentially | SQLite example only |
+| Biến | Mục đích | Nhạy cảm |
+|---|---|---:|
+| `DATABASE_URL` | SQLAlchemy connection URL | Có thể chứa credential |
 
-The application reads process environment variables. It does not automatically parse `.env`. Local tooling may load the file before startup, but production platforms should inject configuration through their secret-management mechanism.
+Ứng dụng đọc process environment. Production phải inject secret bằng secret manager của platform.
 
-## Implemented controls
+## Control hiện có
 
-- Pydantic validates structured request data.
-- SQLAlchemy generates parameterized SQL for ORM queries.
-- API responses are constrained by response models.
-- Dependencies are pinned to explicit package names in `requirements.txt`.
+- Pydantic validate structured input.
+- SQLAlchemy ORM tạo parameterized SQL.
+- Response model giới hạn dữ liệu trả về.
+- Test database cô lập với local database.
 
-These controls reduce common input and query risks but do not establish access control.
+## Khoảng trống
 
-## Known gaps
-
-- no authentication or authorization;
+- chưa có authn/authz;
 - wildcard CORS;
-- no TLS termination in the application;
-- no rate limiting, request quota, or abuse protection;
-- no audit log or correlation ID;
-- no secret rotation workflow;
-- no dependency or container vulnerability gate;
-- no application-level encryption of todo content;
-- no database readiness probe.
+- chưa có TLS termination trong app;
+- chưa rate limit/body limit;
+- chưa audit log/correlation ID;
+- chưa có secret rotation;
+- chưa có dependency scanning gate;
+- chưa có DB readiness.
 
-## Secret-handling rules
+## Quy tắc secret
 
-1. Never commit `.env`, database credentials, tokens, private keys, or production URLs.
-2. Keep `.env.example` limited to placeholders and safe local defaults.
-3. Treat connection strings as secrets because they may contain usernames and passwords.
-4. Rotate a credential immediately if it appears in Git history; deleting the visible line is insufficient.
-5. Do not include secrets in screenshots, issue descriptions, logs, or chatbot source documents.
+1. Không commit `.env`, token, private key hoặc production URL.
+2. `.env.example` chỉ chứa placeholder an toàn.
+3. Connection string được xem là secret.
+4. Secret đã vào Git history phải rotate ngay; xóa dòng chưa đủ.
+5. Không để secret trong screenshot, issue, log hoặc tài liệu chatbot.
 
-## Data classification
+## Dữ liệu
 
-The reference todo model is intended for synthetic or non-sensitive work descriptions. Until identity, retention, encryption, and audit requirements exist, do not store credentials, personal data, customer data, incident secrets, or regulated information.
+Chỉ dùng dữ liệu giả hoặc không nhạy cảm. Không lưu credential, PII, customer data, incident secret hoặc dữ liệu regulated.
 
-## Production readiness gate
+## Gate trước production
 
-Before a non-local deployment, require all of the following:
+Cần token verification, authorization rule, CORS allowlist, HTTPS, managed secrets, production database, Alembic, structured log, correlation ID, limits, dependency scanning, backup/restore và negative authorization tests.
 
-- documented identity provider and token verification;
-- explicit authorization rules for every operation;
-- restrictive CORS allowlist;
-- HTTPS at the trusted ingress;
-- managed secret injection and rotation;
-- PostgreSQL or another supported operational database;
-- Alembic migrations and rollback procedures;
-- structured logging with request correlation;
-- rate and body-size limits;
-- dependency scanning and patch policy;
-- backup, restore, retention, and incident procedures;
-- negative authorization and abuse-case tests.
+## Câu hỏi security review
 
-## Security review prompts
+- Ai được gọi endpoint?
+- Caller được truy cập row nào?
+- ID có vượt tenant/owner boundary?
+- Request size có giới hạn?
+- Giá trị nào có thể lọt vào log?
+- Operation có cần audit?
 
-For each new endpoint, reviewers should ask:
-
-- Who is allowed to call it?
-- Which rows may that caller access?
-- Can supplied identifiers cross a tenant or owner boundary?
-- Is request size bounded?
-- Could any value reach logs or error messages as sensitive data?
-- Are validation failures distinguishable without leaking internal details?
-- Does the operation require an auditable event?
-
-## Reporting a suspected issue
-
-Do not publish exploitable details in a public issue. Share the minimal reproduction with the repository owner through a private channel, include affected versions and impact, and avoid using real credentials or production data.

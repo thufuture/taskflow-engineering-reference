@@ -1,62 +1,42 @@
-# Testing Strategy
+# Chiến lược kiểm thử
 
-Tests protect observable API behavior, isolate persistence state, and make refactoring safe.
+## Mục tiêu
 
-## Current architecture
+Test bảo vệ API contract, cô lập dữ liệu và giúp refactor an toàn.
 
-`tests/test_todos.py` calls the FastAPI app through an HTTP test client. It overrides the production database dependency with in-memory SQLite and `StaticPool`, so requests share one transient test database without touching `todo.db`.
+## Kiến trúc
 
-## Required coverage matrix
+`tests/test_todos.py` gọi FastAPI qua TestClient, override database bằng SQLite in-memory và `StaticPool`. Test không chạm `todo.db`.
 
-| Behavior | Success | Invalid input | Missing resource | Edge cases |
+## Ma trận
+
+| Hành vi | Success | Invalid | Missing | Edge |
 |---|---:|---:|---:|---:|
-| Create | required | required | n/a | defaults, optional fields |
-| List/filter | required | required | empty list | combined filters, newest-first order |
-| Read | required | path validation | required | response shape |
-| PATCH | required | required | required | omission versus null |
-| Delete | required | path validation | required | repeated delete |
-| Health | required | n/a | n/a | liveness-only scope |
+| Create | có | có | n/a | default, optional |
+| List/filter | có | có | empty | filter kết hợp, ordering |
+| Read | có | path | có | response shape |
+| PATCH | có | có | có | omission/null |
+| Delete | có | path | có | delete lặp |
+| Health | có | n/a | n/a | liveness |
 
-## Regression-test workflow
+## Regression test
 
-1. Reproduce the defect with the smallest request.
-2. Use a behavior name such as `test_patch_omitted_title_keeps_existing_value`.
-3. Arrange only required data.
-4. Assert status code and meaningful response fields.
-5. Assert persisted state when mutation matters.
-6. Confirm failure before the fix and success after it.
+Reproduce nhỏ nhất; đặt tên theo hành vi; arrange tối thiểu; assert status/response; assert persisted state; xác minh fail trước fix và pass sau fix.
 
-## Isolation rules
+## Cô lập
 
-- Never mutate through the production session factory.
-- Never depend on execution order.
-- Create state in the test or an explicit fixture.
-- Cleanly override and restore FastAPI dependencies.
-- Avoid generated-ID assumptions unless identity is under test.
+Không dùng production session, không phụ thuộc thứ tự, tạo state trong fixture, không sleep nếu deterministic, restore dependency và không giả định generated ID.
 
-## Commands
+## Lệnh
 
 ```bash
 pytest -q
 pytest -q tests/test_todos.py::test_name_here
 ```
 
-Run the full suite before review.
+Luôn chạy full suite trước review.
 
-## Current gaps
+## Khoảng trống
 
-- combined filters and explicit newest-first ordering;
-- malformed payload and invalid enum coverage;
-- PATCH null versus omission;
-- database-failure mapping;
-- concurrency behavior;
-- tests against a future production database;
-- authorization tests once access control exists.
+Combined filter, ordering, malformed payload, invalid enum, PATCH null/omission, DB failure, concurrency và security test khi có auth.
 
-## Review checklist
-
-- Can the test fail for the intended regression?
-- Is state local and deterministic?
-- Does it assert persistence where needed?
-- Does it cover a negative path?
-- Would it remain valid after internal refactoring?

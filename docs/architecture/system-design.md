@@ -1,130 +1,94 @@
-# System Design
+# Thiết kế hệ thống
 
-## Purpose and scope
+## Mục tiêu và phạm vi
 
-TaskFlow is a reference REST API for managing personal or team work items. The current implementation intentionally uses one FastAPI process and one relational database so engineers can understand the complete request path without distributed-system noise.
+TaskFlow là REST API quản lý công việc dạng modular monolith nhỏ. Toàn bộ HTTP, validation và database chạy trong một FastAPI process để kỹ sư theo dõi request end-to-end. Auth, background job, notification và multi-tenant chưa được triển khai.
 
-The service currently supports create, list, read, update, and delete operations for `Todo` records. Authentication, authorization, background jobs, notifications, and multi-tenant isolation are outside the implemented scope.
-
-## System context
+## Sơ đồ ngữ cảnh
 
 ```text
-API client
-   |
-   | HTTP + JSON
-   v
-FastAPI application (app/main.py)
-   |
-   +-- Todo router (app/routes.py)
-   |      |
-   |      +-- Pydantic contracts (app/schemas.py)
-   |      +-- SQLAlchemy entity (app/models.py)
-   |
-   +-- Database session (app/database.py)
-          |
-          v
-      SQLite by default
-      or another SQLAlchemy URL via DATABASE_URL
+API Client
+   │ HTTP + JSON
+   ▼
+FastAPI (app/main.py)
+   ├── Router Todo (app/routes.py)
+   ├── Contract Pydantic (app/schemas.py)
+   ├── Entity SQLAlchemy (app/models.py)
+   └── Session (app/database.py)
+              │
+              ▼
+        SQLite mặc định
 ```
 
-There are no internal network hops. Route handlers execute database work in the request process.
+## Trách nhiệm thành phần
 
-## Components and responsibilities
+| Thành phần | Trách nhiệm |
+|---|---|
+| `app/main.py` | Tạo app, CORS, router, health và init table |
+| `app/routes.py` | HTTP behavior, filter, CRUD, status code |
+| `app/schemas.py` | Validate request và serialize response |
+| `app/models.py` | Khai báo cột và default được lưu |
+| `app/database.py` | Engine, session factory, vòng đời session |
+| `tests/test_todos.py` | Bảo vệ hành vi public bằng DB cô lập |
 
-| Component | Responsibility | Must not own |
-|---|---|---|
-| `app/main.py` | Construct FastAPI, configure CORS, include routes, expose health check, initialize tables | Todo business rules |
-| `app/routes.py` | HTTP behavior, filtering, CRUD orchestration, status codes | Engine construction or table declaration |
-| `app/schemas.py` | Validate request data and serialize responses | Database queries |
-| `app/models.py` | Define persisted columns and defaults | HTTP concerns |
-| `app/database.py` | Build the engine/session and provide request-scoped sessions | Endpoint-specific queries |
-| `tests/test_todos.py` | Verify public behavior using an isolated database | Production data |
+## Luồng tạo Todo
 
-This separation is the primary architectural invariant. New code should preserve it unless an ADR records a deliberate change.
+1. Client gửi `POST /todos`.
+2. FastAPI chọn `create_todo`.
+3. `TodoCreate` validate title và priority trước khi handler chạy.
+4. Handler tạo entity, add, commit và refresh.
+5. `TodoRead` serialize kết quả; trả `201`.
+6. Input sai trả `422`; không ghi database.
 
-## Request lifecycle
+## Luồng đọc danh sách
 
-### Create a work item
+Handler tạo query Todo, thêm predicate khi có `is_done` hoặc `priority`, sắp xếp `created_at.desc()`, rồi serialize toàn bộ kết quả. Chưa có pagination.
 
-1. The client sends `POST /todos` with JSON.
-2. FastAPI selects `create_todo`.
-3. `TodoCreate` validates required fields and enum values before the handler runs.
-4. The handler creates a SQLAlchemy `Todo`, adds it to the session, commits, and refreshes it.
-5. FastAPI serializes the entity through `TodoRead` and returns `201 Created`.
-6. Validation failures return `422`; unexpected database failures roll back the active transaction through session cleanup behavior.
+## Luồng PATCH
 
-### Read a collection
+Handler tải entity hoặc trả `404`. `model_dump(exclude_unset=True)` chỉ lấy field client thật sự gửi. Sau khi gán field, handler commit và refresh. Field bị bỏ qua giữ nguyên.
 
-1. The client sends `GET /todos` with optional filters.
-2. The handler starts from a `Todo` query and conditionally adds predicates.
-3. Results are ordered by `created_at` descending.
-4. The complete matching collection is serialized as a list of `TodoRead` values; pagination is not implemented.
+## Transaction và nhất quán
 
-### Partially update a work item
+- Mỗi request dùng session riêng từ `get_db`.
+- Mutation commit một lần.
+- Response lấy từ entity đã refresh.
+- Delete là hard delete.
+- Chưa có transaction liên hệ thống.
 
-1. The client sends `PATCH /todos/{todo_id}`.
-2. The handler loads the row or returns `404`.
-3. `TodoUpdate` retains only explicitly supplied fields.
-4. Those fields are assigned to the entity, then committed and refreshed.
-5. Omitted fields remain unchanged. See the API contract for null semantics.
+Nếu feature cần nhiều mutation atomic, giữ chúng trong cùng session và chỉ commit sau khi mọi invariant đạt.
 
-## Data consistency and transactions
+## Startup và schema
 
-- Each request receives a SQLAlchemy session from `get_db`.
-- Mutating handlers commit exactly once after applying their changes.
-- The refreshed entity is the response source, so generated identifiers and database-side values are visible.
-- The current service does not coordinate transactions across external systems.
-- Delete is a hard delete; there is no archive or recovery state.
+Startup gọi `init_db` rồi `Base.metadata.create_all`. Cơ chế này chỉ tạo table thiếu, không thể thay thế migration để rename cột, backfill hoặc rollback. Phải thêm Alembic trước schema change production.
 
-If a future feature needs multiple writes to be atomic, keep them in the same session and commit only after all invariants are satisfied.
+## Concurrency
 
-## Startup and schema lifecycle
-
-Application startup calls `init_db`, which invokes SQLAlchemy `create_all`. This creates missing tables but is not a migration system: it cannot safely rename columns, backfill data, or perform controlled rollbacks. Any production evolution should introduce Alembic before the first incompatible schema change.
-
-## Concurrency model
-
-Route functions are synchronous and use a synchronous SQLAlchemy session. FastAPI runs synchronous handlers in its worker thread pool. SQLite is suitable for local development and low-write reference use, but concurrent writes may contend on a database-level lock.
-
-Do not solve SQLite contention by adding retries blindly. First decide whether the deployment requires PostgreSQL, multiple workers, or a database-specific concurrency policy.
+Route và SQLAlchemy hiện dùng synchronous API; FastAPI chạy sync handler trong thread pool. SQLite phù hợp local và write thấp nhưng có thể khóa khi nhiều writer. Khi có contention thật, đánh giá PostgreSQL thay vì tăng timeout tùy tiện.
 
 ## Security boundary
 
-The API currently trusts every caller. Wildcard CORS allows browser clients from any origin. This is acceptable only for a local reference environment. Before exposure to an untrusted network, add identity verification, authorization, restrictive CORS, secret management, request limits, and transport security. The complete gate is in [Security Guide](../access/security-guide.md).
+Mọi caller có thể thao tác mọi Todo. Wildcard CORS chỉ phù hợp môi trường tham chiếu local. Trước Internet công cộng cần authn, authz, CORS allowlist, TLS, secret management và request limits.
 
 ## Observability
 
-Implemented signals are intentionally minimal:
+Có health endpoint, access log và exception log của Uvicorn. Chưa có DB readiness, metrics, trace, correlation ID hoặc audit event.
 
-- `/health` confirms that the web application can answer a request;
-- Uvicorn provides access and exception logs;
-- HTTP status codes expose validation and not-found failures.
+## Failure mode
 
-The health endpoint does not verify database connectivity. There are no metrics, traces, correlation IDs, audit events, or structured domain logs.
-
-## Failure modes
-
-| Failure | Visible behavior | First investigation |
+| Lỗi | Biểu hiện | Kiểm tra đầu tiên |
 |---|---|---|
-| Invalid JSON or field | `422` | Inspect FastAPI validation detail |
-| Unknown todo ID | `404` | Confirm ID and database target |
-| Database cannot open | startup/request error | Check `DATABASE_URL`, path permissions, and driver |
-| SQLite write contention | lock-related server error | Check concurrent writers and transaction duration |
-| Port already bound | server fails to start | Stop the conflicting process or select another port |
+| Input sai | `422` | Đọc validation detail |
+| ID không có | `404` | Kiểm tra ID và DB đích |
+| DB không mở | startup/500 | `DATABASE_URL`, quyền file, driver |
+| SQLite locked | 500 | Process ghi đồng thời, transaction dài |
+| Port bận | không start | Dừng process hoặc đổi port |
 
-## Scaling decision points
+## Invariant kiến trúc
 
-Move beyond this architecture only when evidence requires it:
+1. Pydantic định nghĩa contract public.
+2. Session theo request, không lưu global.
+3. Test không dùng `todo.db` của developer.
+4. Schema change cần migration strategy.
+5. Tài liệu phân biệt rõ hiện trạng và kế hoạch.
 
-- choose PostgreSQL when concurrent writes or operational durability exceed SQLite's target;
-- add a service layer when rules are shared by multiple handlers or transactions become non-trivial;
-- add background workers only for work that should not block an HTTP response;
-- split services only when ownership, scaling, or failure isolation justify the operational cost.
-
-## Architecture invariants
-
-1. Public request and response behavior is defined by Pydantic schemas.
-2. Database sessions are request-scoped and never stored globally.
-3. Tests do not use the developer's `todo.db`.
-4. Schema changes require an explicit migration strategy.
-5. Documentation distinguishes implemented behavior from planned behavior.

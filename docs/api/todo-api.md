@@ -1,20 +1,20 @@
-# Todo API Contract
+# API Contract của Todo
 
-## Conventions
+## Quy ước
 
-- Base URL in local development: `http://127.0.0.1:8000`
-- Content type for request bodies: `application/json`
-- Error bodies use FastAPI's standard `detail` structure.
-- Datetimes are JSON strings produced by Pydantic from Python datetime values.
-- IDs are positive database-generated integers.
+- Base URL local: `http://127.0.0.1:8000`.
+- Body dùng `application/json`.
+- Lỗi theo cấu trúc `detail` của FastAPI.
+- ID do database sinh.
+- Datetime được serialize dạng ISO.
 
-## Todo representation
+## Representation
 
 ```json
 {
   "id": 1,
-  "title": "Read the architecture guide",
-  "description": "Review request flow and persistence boundaries",
+  "title": "Đọc tài liệu kiến trúc",
+  "description": "Hiểu request flow và transaction",
   "is_done": false,
   "priority": "high",
   "created_at": "2026-08-28T10:15:00",
@@ -22,118 +22,53 @@
 }
 ```
 
-## Health
+## `GET /health`
 
-### `GET /health`
+Trả `200 {"status":"ok"}` khi web process phản hồi. Không kiểm tra database.
 
-Confirms that the FastAPI process is responsive.
-
-Success: `200 OK`
-
-```json
-{"status":"ok"}
-```
-
-This is a liveness signal, not a database readiness check.
-
-## Create a todo
-
-### `POST /todos`
-
-Request:
+## `POST /todos`
 
 ```json
 {
-  "title": "Add contract tests",
-  "description": "Cover invalid priority and missing IDs",
+  "title": "Bổ sung contract test",
+  "description": "Kiểm tra priority sai và ID không tồn tại",
   "priority": "high"
 }
 ```
 
-Response: `201 Created` with the complete todo representation.
+- `201`: tạo thành công.
+- `422`: title hoặc priority không hợp lệ.
 
-Expected errors:
+## `GET /todos`
 
-- `422` when a required field is missing or priority is invalid.
-
-## List todos
-
-### `GET /todos`
-
-The endpoint supports the optional `is_done` boolean and `priority` enum filters implemented in `app/routes.py`.
-
-Typical request:
+Query tùy chọn: `is_done` boolean và `priority` thuộc `low|medium|high`.
 
 ```bash
 curl "http://127.0.0.1:8000/todos?is_done=false&priority=high"
 ```
 
-Response: `200 OK` and a JSON array. An empty result is `[]`, not `404`.
+Trả mảng JSON, sắp xếp `created_at` giảm dần. Không có kết quả trả `[]`. Chưa có pagination.
 
-Results are ordered by `created_at` descending. Pagination is not implemented, so consumers should avoid assuming this endpoint is suitable for an unbounded production dataset.
+## `GET /todos/{todo_id}`
 
-## Read one todo
+- `200`: tìm thấy.
+- `404`: ID không tồn tại.
+- `422`: ID không phải số nguyên.
 
-### `GET /todos/{todo_id}`
-
-- `200` with the todo when it exists.
-- `404` when no matching row exists.
-
-```bash
-curl http://127.0.0.1:8000/todos/1
-```
-
-## Partially update a todo
-
-### `PATCH /todos/{todo_id}`
-
-Only supplied fields are changed.
+## `PATCH /todos/{todo_id}`
 
 ```json
-{
-  "is_done": true,
-  "priority": "low"
-}
+{"is_done": true, "priority": "low"}
 ```
 
-- `200` with the updated representation.
-- `404` for an unknown ID.
-- `422` for an invalid field value.
+Chỉ field xuất hiện được cập nhật. Field bỏ qua giữ nguyên. Trả `200`, `404` hoặc `422`. Không mặc định coi `null` giống bỏ qua; phải đối chiếu Pydantic và database.
 
-Omission means “leave unchanged.” Before allowing explicit `null` for a field, verify the Pydantic type and database nullability; do not assume omission and null are equivalent.
+## `DELETE /todos/{todo_id}`
 
-## Delete a todo
+- `204 No Content`: xóa vĩnh viễn.
+- `404`: ID không tồn tại.
 
-### `DELETE /todos/{todo_id}`
+## Compatibility
 
-Deletion is permanent in the current implementation.
+Xóa/đổi tên response field, đổi kiểu hoặc enum, biến field tùy chọn thành bắt buộc, đổi status code, delete semantics hoặc filter đều là breaking change và cần regression test.
 
-- success returns `204 No Content`;
-- an unknown ID returns `404`.
-
-Consumers that need recovery must not use this endpoint until an archive model is designed.
-
-## Validation example
-
-Invalid priority:
-
-```json
-{
-  "title": "Invalid example",
-  "priority": "urgent"
-}
-```
-
-The service returns `422` before database mutation because the value is outside `low`, `medium`, and `high`.
-
-## Compatibility policy
-
-Treat these as breaking changes:
-
-- removing or renaming a response field;
-- changing a field type or enum value;
-- making an optional request field mandatory;
-- changing status codes or delete semantics;
-- changing filter interpretation.
-
-For any breaking change, add versioning or coordinate consumers, update this document, and add regression tests in the same pull request.

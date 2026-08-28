@@ -1,139 +1,96 @@
 # TaskFlow API Reference
 
-TaskFlow is a small but fully executable task-management API used as a reference project for engineer onboarding, repository scanning, document classification, and source-grounded chatbot answers.
+TaskFlow là dự án API quản lý công việc mẫu, giúp kỹ sư học toàn bộ luồng backend từ HTTP, validation, xử lý nghiệp vụ, lưu database đến kiểm thử. Repo cũng là nguồn chuẩn để kiểm thử đồng bộ GitHub và chatbot có trích dẫn của Ralion.
 
-The service exposes CRUD operations for shared tasks. It is intentionally implemented as a single FastAPI process with SQLAlchemy and SQLite so a new engineer can understand the complete request path in one working session.
+## Phạm vi hiện tại
 
-## What is implemented
+Hệ thống đã có:
 
-- Create, list, read, partially update, and delete tasks.
-- Filter task lists by completion status and priority.
-- Validate request and response payloads with Pydantic.
-- Manage one SQLAlchemy session per HTTP request.
-- Create the SQLite schema during application startup.
-- Run isolated API tests against an in-memory database.
-- Expose `/health`, OpenAPI JSON, and Swagger UI.
+- CRUD công việc và cập nhật một phần bằng PATCH;
+- lọc theo trạng thái hoàn thành và độ ưu tiên;
+- FastAPI, Pydantic, SQLAlchemy và SQLite;
+- OpenAPI tại `/docs`, health check tại `/health`;
+- test API trên database SQLite in-memory độc lập.
 
-## Explicit non-goals
+Hệ thống **chưa có** đăng nhập, phân quyền, owner, phân trang, migration Alembic, soft delete, rate limit, metrics hay kiến trúc production. Không triển khai trực tiếp repo này ra Internet công cộng.
 
-The current reference implementation does **not** provide authentication, per-user ownership, Alembic migrations, pagination, rate limiting, or a production deployment topology. Do not expose it directly to the public Internet. These limitations are documented so engineers and AI assistants do not infer capabilities that are not present in code.
+## Công nghệ
 
-## Technology baseline
-
-| Area | Choice | Source of truth |
+| Thành phần | Công nghệ | Vai trò |
 |---|---|---|
-| Runtime | Python 3.11+ | `requirements.txt`, type syntax |
-| HTTP framework | FastAPI | `app/main.py`, `app/routes.py` |
-| Persistence | SQLAlchemy 2.x ORM | `app/database.py`, `app/models.py` |
-| Local database | SQLite | `DATABASE_URL` |
-| Validation | Pydantic | `app/schemas.py` |
-| Tests | pytest + FastAPI TestClient | `tests/test_todos.py` |
+| Web API | FastAPI | Routing, dependency injection, OpenAPI |
+| Contract | Pydantic | Kiểm tra request và serialize response |
+| Persistence | SQLAlchemy | Model, query và transaction |
+| Local database | SQLite | Lưu dữ liệu phát triển |
+| Test | Pytest + TestClient | Kiểm thử HTTP và database |
+| Server | Uvicorn | Chạy ứng dụng ASGI |
 
-## Quick start
+## Chạy nhanh
 
-```bash
+```powershell
 python -m venv .venv
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-# macOS/Linux
-source .venv/bin/activate
-
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+pytest -q
 uvicorn app.main:app --reload
 ```
 
-Verify the service:
+Kiểm tra:
 
 ```bash
 curl http://127.0.0.1:8000/health
-# {"status":"ok"}
+curl http://127.0.0.1:8000/todos
 ```
 
-Open `http://127.0.0.1:8000/docs` for Swagger UI. See [local setup](docs/setup/local-setup.md) for Windows, macOS/Linux, verification, and troubleshooting details.
-
-## First API workflow
+Tạo công việc:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/todos \
   -H "Content-Type: application/json" \
-  -d '{"title":"Review onboarding docs","description":"Check architecture and runbook","priority":"high"}'
-
-curl "http://127.0.0.1:8000/todos?is_done=false&priority=high"
-
-curl -X PATCH http://127.0.0.1:8000/todos/1 \
-  -H "Content-Type: application/json" \
-  -d '{"is_done":true}'
+  -d '{"title":"Đọc tài liệu kiến trúc","priority":"high"}'
 ```
 
-The canonical endpoint behavior, validation rules, status codes, and examples live in [Todo API contract](docs/api/todo-api.md).
-
-## Repository map
+## Cấu trúc repo
 
 ```text
-taskflow-api-reference/
-├── app/
-│   ├── main.py                 # FastAPI application and startup hook
-│   ├── database.py             # Engine, session factory, Base, get_db
-│   ├── models.py               # Todo ORM model
-│   ├── schemas.py              # Create, update, and response contracts
-│   └── routes.py               # HTTP handlers and database operations
-├── tests/test_todos.py         # Executable API behavior examples
-├── docs/
-│   ├── product/project-overview.md
-│   ├── architecture/system-design.md
-│   ├── architecture/data-model.md
-│   ├── api/todo-api.md
-│   ├── setup/local-setup.md
-│   ├── access/security-guide.md
-│   ├── codebase-guide.md
-│   ├── operations/runbook.md
-│   ├── testing/testing-strategy.md
-│   ├── onboarding/first-week.md
-│   └── adr/0001-single-service.md
-├── .env.example
-├── .gitignore
-├── CONTRIBUTING.md
-└── requirements.txt
+app/
+├── main.py       # FastAPI, CORS, router, health và startup
+├── routes.py     # CRUD và filter Todo
+├── schemas.py    # Contract request/response
+├── models.py     # Entity SQLAlchemy
+└── database.py   # Engine, session factory và dependency
+tests/            # Test tích hợp bằng database in-memory
+docs/             # Tài liệu sản phẩm, kỹ thuật và vận hành
 ```
 
-## Documentation index by onboarding need
+## Bản đồ tài liệu
 
-| If you need to… | Read this | Expected outcome |
-|---|---|---|
-| Understand the product and scope | [Project overview](docs/product/project-overview.md) | Explain users, use cases, non-goals, and success criteria |
-| Trace a request end to end | [System design](docs/architecture/system-design.md) | Follow HTTP → validation → ORM → SQLite → response |
-| Understand fields and invariants | [Data model](docs/architecture/data-model.md) | Change Todo fields without breaking contracts |
-| Run the service locally | [Local setup](docs/setup/local-setup.md) | Start the API and pass smoke checks |
-| Integrate with the API | [API contract](docs/api/todo-api.md) | Send valid requests and handle errors |
-| Modify the implementation | [Codebase guide](docs/codebase-guide.md) | Identify every file and required test impact |
-| Assess access and security | [Security guide](docs/access/security-guide.md) | Understand current trust boundary and production blockers |
-| Diagnose an incident | [Operations runbook](docs/operations/runbook.md) | Triage health, port, database, and validation failures |
-| Add or review tests | [Testing strategy](docs/testing/testing-strategy.md) | Preserve isolated deterministic test behavior |
-| Complete onboarding | [First-week checklist](docs/onboarding/first-week.md) | Produce a verified first change |
-| Ground chatbot answers | [Chatbot grounding guide](docs/onboarding/chatbot-grounding.md) | Cite implemented behavior and reject unsupported assumptions |
-| Understand architecture decisions | [ADR-0001](docs/adr/0001-single-service.md) | Explain why this is a modular monolith reference |
+| Nhu cầu | Tài liệu |
+|---|---|
+| Hiểu mục tiêu và giới hạn | [Tổng quan dự án](docs/product/project-overview.md) |
+| Hiểu kiến trúc và request flow | [Thiết kế hệ thống](docs/architecture/system-design.md) |
+| Hiểu entity và quy tắc dữ liệu | [Mô hình dữ liệu](docs/architecture/data-model.md) |
+| Tích hợp API | [API Todo](docs/api/todo-api.md) |
+| Cài môi trường local | [Thiết lập local](docs/setup/local-setup.md) |
+| Kiểm tra an toàn | [Hướng dẫn bảo mật](docs/access/security-guide.md) |
+| Tìm vị trí sửa code | [Hướng dẫn codebase](docs/codebase-guide.md) |
+| Xử lý lỗi vận hành | [Runbook](docs/operations/runbook.md) |
+| Viết và review test | [Chiến lược kiểm thử](docs/testing/testing-strategy.md) |
+| Onboarding kỹ sư | [Kế hoạch tuần đầu](docs/onboarding/first-week.md) |
+| Grounding chatbot | [Hướng dẫn chatbot](docs/onboarding/chatbot-grounding.md) |
+| Quyết định kiến trúc | [ADR-0001](docs/adr/0001-single-service.md) |
+| Quy trình đóng góp | [CONTRIBUTING](CONTRIBUTING.md) |
 
-## Definition of done
+## Luồng request
 
-A change is complete only when:
-
-1. Runtime behavior and API contract agree.
-2. Request/response schema changes are covered by tests.
-3. `pytest -q` passes from a clean environment.
-4. No `.env`, database, log, virtualenv, cache, or dependency directory is committed.
-5. Relevant documentation and examples are updated.
-6. The pull request describes risk, validation evidence, and rollback approach.
-
-## Useful commands
-
-```bash
-pytest -q
-uvicorn app.main:app --reload
-curl http://127.0.0.1:8000/health
+```text
+Client -> FastAPI route -> Pydantic schema -> SQLAlchemy session
+       -> SQLite/database -> response_model -> JSON response
 ```
 
-## Status
+Mỗi request nhận một session riêng qua `get_db`. Handler ghi dữ liệu commit sau khi áp dụng thay đổi và refresh entity trước khi trả response.
 
-This repository is an onboarding/reference service. Its value is accuracy, traceability, and safe learning—not feature breadth. For contribution rules and review expectations, see [CONTRIBUTING.md](CONTRIBUTING.md).
+## Definition of Done
+
+Một thay đổi chỉ hoàn thành khi hành vi rõ ràng, schema và model nhất quán, có test success/failure, tài liệu cập nhật, đã đánh giá compatibility/security, toàn bộ test pass và không commit secret hay file sinh local.
+

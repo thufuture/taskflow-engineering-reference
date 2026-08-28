@@ -1,53 +1,34 @@
-# Engineer First-Week Guide
+# Onboarding kỹ sư tuần đầu
 
-## Goal
+## Mục tiêu
 
-At completion, an engineer can run TaskFlow, explain its architecture, trace a request, add a tested change, and identify production-readiness gaps.
+Kỹ sư chạy được TaskFlow, giải thích kiến trúc, trace request, thêm thay đổi có test và nhận diện production gap.
 
-## Day 1: baseline
+## Ngày 1
 
-1. Follow `docs/setup/local-setup.md`.
-2. Run `pytest -q`.
-3. Start the API and open `/docs`.
-4. Create, list, update, and delete one disposable todo.
-5. Explain why `/health` does not prove database readiness.
+Theo setup guide; chạy `pytest -q`; mở `/docs`; thực hiện CRUD; giải thích vì sao `/health` không kiểm tra DB. Lưu test output và request/response, không commit file local.
 
-Evidence: test result, one request/response example, and no secret/generated file staged.
+## Ngày 2
 
-## Day 2: request trace
+Trace `POST /todos` qua `main.py`, `schemas.py`, `routes.py`, `models.py`, `database.py`; sau đó trace invalid priority và missing ID.
 
-Trace `POST /todos` through `app/main.py`, `app/schemas.py`, `app/routes.py`, `app/models.py`, and `app/database.py`. Then trace invalid priority or an unknown ID.
+## Ngày 3
 
-## Day 3: testing and data safety
+Tìm dependency override; giải thích `StaticPool`; thêm negative/boundary test; xác minh `todo.db` không đổi.
 
-- Identify the dependency override in `tests/test_todos.py`.
-- Explain `StaticPool` with in-memory SQLite.
-- Add one missing negative or boundary test without changing production behavior.
-- Confirm local `todo.db` is untouched.
+## Ngày 4
 
-## Day 4: first reviewed change
+Chọn thay đổi nhỏ; tạo branch tập trung, commit có nghĩa, cập nhật test/docs và viết PR có risk cùng evidence.
 
-Choose a small validation, filter-test, or docs improvement. Follow `CONTRIBUTING.md`: focused branch, one coherent change, tests/docs, descriptive commit, and a PR with risk and verification evidence.
+## Ngày 5
 
-## Day 5: operations and security
+Thực hành runbook; liệt kê security gap; giải thích khi SQLite không phù hợp; đọc ADR; review PR đầu tiên.
 
-- Work through one runbook scenario.
-- List current security gaps without claiming they are implemented.
-- Explain when SQLite becomes unsuitable.
-- Review ADR 0001 and propose a measurable revisit trigger.
-- Present the change and respond to review.
+## Câu hỏi kiểm tra
 
-## Knowledge checks
+Contract ở đâu? Session đóng khi nào? PATCH omission là gì? Missing ID ra sao? Vì sao `create_all` không phải migration? Test dùng DB nào? Có expose Internet được chưa?
 
-- Where is the public payload contract?
-- When is a database session created and closed?
-- What does PATCH omission mean?
-- What happens for an unknown ID?
-- Why is `create_all` not a migration strategy?
-- Which database do tests use?
-- Is public internet exposure safe today?
-- Which artifacts change when adding a field?
+## Khi cần hỗ trợ
 
-## Asking for help
+Cung cấp lệnh, expected/actual, traceback đầu, môi trường đã che secret và những cách đã thử.
 
-Provide exact command, expected and actual result, first relevant traceback, sanitized environment facts, and prior attempts. This enables useful help from engineers and source-grounded chatbots.

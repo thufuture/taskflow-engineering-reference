@@ -1,41 +1,29 @@
-# ADR 0001: Use a Single FastAPI Service with SQLAlchemy
+# ADR 0001: Dùng một FastAPI service với SQLAlchemy
 
-- Status: Accepted
-- Date: 2026-08-28
-- Owners: TaskFlow maintainers
+- Trạng thái: Đã chấp nhận
+- Ngày: 2026-08-28
+- Chủ sở hữu: Nhóm TaskFlow
 
-## Context
+## Bối cảnh
 
-The project must teach complete backend request flow with minimal prerequisites. One CRUD domain does not justify distributed services or messaging. Persistence should remain replaceable so local SQLite can later give way to a managed relational database.
+Dự án cần dạy request flow hoàn chỉnh với ít prerequisite. Một domain CRUD chưa đủ lý do dùng microservice hoặc broker. Persistence cần thay được để SQLite local có thể chuyển sang managed relational database.
 
-## Decision
+## Quyết định
 
-Use one FastAPI application with route, schema, model, and database modules. Use SQLAlchemy and default local SQLite. Keep synchronous handlers and request-scoped sessions.
+Dùng một FastAPI application gồm route, schema, model và database. Dùng SQLAlchemy, SQLite mặc định, synchronous handler và request-scoped session.
 
-## Alternatives
+## Phương án
 
-- **Microservices:** rejected; no ownership or scaling boundary justifies the overhead.
-- **Memory-only storage:** rejected; persistence is an important learning concern.
-- **PostgreSQL everywhere:** deferred; better for production, but raises local setup cost.
-- **Async ORM:** deferred; current workload does not justify lifecycle complexity.
+- **Microservices:** từ chối vì chưa có domain/ownership/scaling boundary.
+- **In-memory only:** từ chối vì persistence quan trọng.
+- **Bắt buộc PostgreSQL:** hoãn vì tăng chi phí setup.
+- **Async ORM:** hoãn vì workload chưa chứng minh nhu cầu.
 
-## Consequences
+## Hệ quả
 
-Benefits include end-to-end traceability, simple local startup, fast tests, and low operational cost. Costs include SQLite write limits, lack of production migrations, synchronous database access, and a shared process failure unit.
+Ưu: trace end-to-end, startup đơn giản, test nhanh. Nhược: SQLite giới hạn write, chưa migration production, DB sync và một failure unit chung.
 
-## Guardrails
+## Guardrail và điều kiện xem xét lại
 
-- Keep sessions request-scoped.
-- Avoid module cycles.
-- Add Alembic before incompatible schema changes.
-- Do not recommend SQLite as the production default.
-- Record cross-cutting decisions as ADRs.
+Session theo request; tránh cycle; thêm Alembic trước incompatible schema; không dùng SQLite làm production default. Xem xét lại khi lock kéo dài, cần replica, transaction nhiều domain, background work, ownership độc lập hoặc không đạt SLO.
 
-## Revisit triggers
-
-- sustained database lock contention;
-- need for multiple replicas;
-- transactions across several domains;
-- background work exceeding HTTP budgets;
-- separate deployment ownership;
-- measured reliability or throughput targets the design cannot meet.

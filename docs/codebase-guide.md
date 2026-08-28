@@ -1,124 +1,72 @@
-# Codebase Guide
+# Hướng dẫn codebase
 
-## Start here
+## Thứ tự đọc
 
-Read files in this order to understand the implementation quickly:
-
-1. `README.md` for scope and commands.
-2. `app/main.py` for application composition.
-3. `app/schemas.py` for the public data contract.
-4. `app/routes.py` for endpoint behavior.
-5. `app/models.py` for persistence.
-6. `app/database.py` for engine and session lifecycle.
-7. `tests/test_todos.py` for executable behavior examples.
+1. `README.md`: phạm vi và lệnh chạy.
+2. `app/main.py`: composition.
+3. `app/schemas.py`: contract public.
+4. `app/routes.py`: hành vi endpoint.
+5. `app/models.py`: persistence.
+6. `app/database.py`: engine và session.
+7. `tests/test_todos.py`: hành vi thực thi.
 
 ## Source map
 
 ```text
-app/
-├── __init__.py
-├── main.py       # FastAPI app, middleware, router, health, startup
-├── routes.py     # Todo CRUD and filters
-├── schemas.py    # Request/response models and priority enum
-├── models.py     # SQLAlchemy Todo table
-└── database.py   # DATABASE_URL, engine, session factory, dependency
-tests/
-└── test_todos.py # In-memory API tests
+app/main.py       FastAPI, middleware, router, health
+app/routes.py     CRUD và filter
+app/schemas.py    request/response model
+app/models.py     table Todo
+app/database.py   DATABASE_URL, engine, session
+tests/            test API database in-memory
 ```
-
-## Application composition
-
-`app/main.py` owns framework wiring. The exported `app` object is what Uvicorn imports with `app.main:app`. The module includes the todo router and exposes `/health`. Startup initializes missing tables through `init_db`.
-
-If a new domain router is added, construct it in its own module and include it here. Do not place domain queries directly in `main.py`.
 
 ## Contract layer
 
-`app/schemas.py` is the first file to inspect when an API payload fails validation. It separates create, partial update, and response shapes. That distinction prevents clients from supplying generated fields such as IDs or timestamps.
-
-When adding a field, decide independently whether it is:
-
-- accepted during create;
-- mutable during PATCH;
-- returned to clients;
-- nullable, optional, or defaulted.
-
-Those are separate product decisions, not one mechanical model change.
+Khi thêm field, phải quyết định riêng: có nhận khi create, có cho PATCH, có trả về, nullable hay optional, default ở đâu. Đây là quyết định sản phẩm chứ không phải thao tác model máy móc.
 
 ## Route layer
 
-`app/routes.py` owns HTTP orchestration:
-
-- extract path, query, and body values;
-- obtain a request-scoped database session;
-- load or query entities;
-- map absent rows to `404`;
-- commit mutations and refresh response entities;
-- declare response models and status codes.
-
-Keep route behavior readable. Introduce a service function only when rules are reused, the transaction spans several mutations, or the handler becomes difficult to test as a unit.
+Route có trách nhiệm lấy input, nhận session, query entity, map missing row thành `404`, commit mutation, refresh entity, khai báo response model và status code. Chỉ thêm service layer khi rule dùng chung, transaction phức tạp hoặc handler khó test.
 
 ## Persistence layer
 
-`app/models.py` declares the table. Python defaults, database nullability, indexes, and timestamps are persisted concerns. `app/database.py` constructs the SQLAlchemy engine from `DATABASE_URL`, creates the session factory, and closes sessions after each request.
+`models.py` định nghĩa table. `database.py` tạo engine từ `DATABASE_URL`, session factory và đóng session sau request. Không giữ session global và không để test dùng file database developer.
 
-Never import and retain a live session at module scope. Never point automated tests at the developer's file database.
+## Recipe thêm field
 
-## Common change recipes
+1. Định nghĩa semantics trong product/API docs.
+2. Cập nhật ORM.
+3. Cập nhật schema liên quan.
+4. Lập migration plan.
+5. Test create/read/PATCH.
+6. Cập nhật ví dụ và data model.
 
-### Add a field
+## Recipe thêm filter
 
-1. Define semantics in the product/API docs.
-2. Update the SQLAlchemy model.
-3. Update relevant Pydantic schemas.
-4. Add migration planning; `create_all` is insufficient for existing production data.
-5. Update create/read/update tests.
-6. Update API examples and data-model documentation.
-
-### Add a filter
-
-1. Add a typed query parameter to the list handler.
-2. Apply the predicate only when the parameter is present.
-3. Test matching, non-matching, combined, and invalid values.
-4. Document ordering; if pagination is introduced, specify its interaction with that order.
-
-### Add an endpoint
-
-1. Define method, path, authorization expectation, status codes, and schemas.
-2. Implement the smallest route behavior.
-3. Cover success, invalid input, unknown resources, and state conflicts.
-4. Update the API contract and OpenAPI-facing metadata.
+Thêm query parameter có type, chỉ áp predicate khi parameter có mặt, test matching/non-matching/kết hợp/invalid, mô tả ordering và pagination nếu có.
 
 ## Review checklist
 
-- Does validation happen before mutation?
-- Are omitted and null values handled intentionally?
-- Can the operation leave a partially committed state?
-- Is the status code part of the documented contract?
-- Does an unknown resource produce a consistent `404`?
-- Are tests isolated from local files and environment?
-- Does the change introduce a security or compatibility requirement?
-- Are source comments explaining “why” rather than restating code?
+- Validation trước mutation?
+- Omission và null có chủ ý?
+- Có partial commit?
+- Status code đúng contract?
+- Missing resource nhất quán `404`?
+- Test cô lập?
+- Có security/compatibility impact?
+- Comment giải thích “tại sao”?
 
 ## Dependency direction
 
-Preferred direction:
-
 ```text
 main -> routes -> schemas/models/database
-tests -> public app behavior and controlled database fixtures
+tests -> public app behavior + isolated fixtures
 ```
 
-Avoid importing route modules into models or database configuration. Cyclic imports make startup behavior fragile and blur ownership.
+Không import route vào model/database để tránh cycle.
 
-## Debugging sequence
+## Debug sequence
 
-For an unexpected API result:
+Reproduce bằng curl nhỏ nhất; đọc status/detail; kiểm tra `DATABASE_URL`; trace handler; đối chiếu schema; kiểm tra model/transaction; thêm regression test trước khi fix.
 
-1. reproduce it with a minimal curl request;
-2. inspect the response status and validation detail;
-3. confirm the app is using the expected `DATABASE_URL`;
-4. trace the matching handler in `app/routes.py`;
-5. compare the request with `app/schemas.py`;
-6. inspect the persisted model and transaction boundary;
-7. add a failing regression test before fixing the issue.

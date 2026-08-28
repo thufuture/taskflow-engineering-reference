@@ -1,73 +1,57 @@
-# Data Model
+# Mô hình dữ liệu
 
-## Entity overview
+## Entity Todo
 
-The current domain has one persisted entity: `Todo`. It represents a work item and its completion state.
-
-| Field | Type | Required on create | Persisted behavior |
+| Field | Kiểu | Bắt buộc khi tạo | Ý nghĩa |
 |---|---|---:|---|
-| `id` | integer | generated | Primary key |
-| `title` | string | yes | Human-readable summary |
-| `description` | string or null | no | Additional context |
-| `is_done` | boolean | no | Defaults to `false` |
-| `priority` | `low`, `medium`, `high` | no | Defaults to `medium` |
-| `created_at` | datetime | generated | Creation timestamp |
-| `updated_at` | datetime | generated | Last database-managed update timestamp |
+| `id` | integer | tự sinh | Primary key |
+| `title` | string | có | Tóm tắt công việc, 1–200 ký tự |
+| `description` | string/null | không | Bối cảnh bổ sung |
+| `is_done` | boolean | không | Mặc định `false` |
+| `priority` | enum | không | `low|medium|high`, mặc định `medium` |
+| `created_at` | datetime | tự sinh | Thời điểm tạo |
+| `updated_at` | datetime | tự sinh | Thời điểm cập nhật |
 
-The canonical declaration is `app/models.py`; API-level validation lives in `app/schemas.py`. Both must be reviewed when a field changes.
+Khai báo persistence chuẩn nằm trong `app/models.py`; validation API nằm trong `app/schemas.py`. Khi đổi field phải review cả hai.
 
-## API schema roles
+## Vai trò schema
 
-- `TodoCreate` defines what clients may provide when creating a record.
-- `TodoUpdate` makes mutable fields optional so PATCH can distinguish omitted values.
-- `TodoRead` defines the stable response representation and enables ORM attribute serialization.
+- `TodoCreate`: dữ liệu client được gửi khi tạo.
+- `TodoUpdate`: field mutable dạng optional để PATCH phân biệt bỏ qua.
+- `TodoRead`: response public ổn định và serialize từ ORM.
 
-Never return an unrestricted ORM object from a new endpoint without a response model. An explicit response schema prevents accidental exposure when columns are added later.
+Không trả ORM object từ endpoint mới nếu thiếu response model, vì field database thêm sau có thể bị lộ ngoài ý muốn.
 
-## Invariants
+## Invariant đã enforce
 
-### Enforced by code
+- priority thuộc enum hợp lệ;
+- create bắt buộc title;
+- ID duy nhất do database sinh;
+- is_done và priority có default;
+- endpoint xử lý ID không tồn tại.
 
-- priority must be one of the enum values accepted by Pydantic;
-- `title` is required by the create contract;
-- `id` is database-generated and unique;
-- `is_done` and `priority` receive defaults when omitted;
-- unknown IDs are rejected by endpoint behavior.
+## Giả định chưa enforce đầy đủ
 
-### Assumed but not fully enforced
+- title nên có nội dung, không chỉ khoảng trắng;
+- timestamp nên được hiểu thống nhất theo UTC;
+- description không nên quá lớn;
+- các record cùng `created_at` chưa có secondary ordering.
 
-- titles should be meaningful rather than whitespace-only;
-- timestamps should be interpreted consistently as UTC;
-- descriptions should remain small enough for normal JSON responses;
-- clients should recognize that list results are explicitly ordered by `created_at` descending, with no secondary tie-breaker.
+Nếu giả định thành yêu cầu, phải thêm validation và test.
 
-If any assumption becomes a product requirement, implement validation and add contract tests rather than relying on documentation alone.
+## Quan hệ
 
-## Relationship model
+Hiện không có foreign key hoặc relationship. Todo chưa có owner, project, label, comment hoặc dependency. Thêm các khái niệm này sẽ ảnh hưởng auth và delete semantics, cần ADR và migration.
 
-There are currently no foreign keys or relationships. A todo does not have an owner, project, label, comment, or dependency. Adding one of those concepts changes authorization and deletion behavior and therefore requires an ADR plus migration planning.
+## Checklist thêm field
 
-## Field-change checklist
+1. Xác định ý nghĩa, null và omission.
+2. Cập nhật SQLAlchemy model.
+3. Cập nhật schema create/update/read phù hợp.
+4. Quyết định default và backfill.
+5. Tạo migration trước production.
+6. Cập nhật API docs.
+7. Test create, read, PATCH, invalid input và row cũ.
 
-For a new or modified field:
+Ví dụ thêm `due_at` phải trả lời timezone, có cho phép quá khứ, có thể clear bằng null, cần filter/sort gì và backfill row cũ ra sao.
 
-1. define the product meaning and whether null differs from omission;
-2. update the SQLAlchemy model;
-3. update create, update, and read schemas as appropriate;
-4. decide default and backfill behavior for existing rows;
-5. add a migration before production deployment;
-6. update endpoint examples and compatibility notes;
-7. test create, read, update, filtering, invalid input, and legacy rows.
-
-## Example: evaluating a future `due_at` field
-
-Before implementation, answer:
-
-- Is it optional?
-- Must it include an offset?
-- Is a past deadline valid?
-- Can PATCH clear it with `null`?
-- Does listing need a range filter or sort order?
-- How will old rows be backfilled?
-
-These answers belong in the contract and tests, not only in the database column definition.

@@ -1,25 +1,26 @@
-## Problem
+## Vấn đề
 
-<!-- What user or engineering problem does this solve? -->
+<!-- Vấn đề cần giải quyết -->
 
-## Changes
+## Thay đổi
 
-<!-- Summarize implementation and decisions. -->
+<!-- Tóm tắt implementation -->
 
-## Contract and risk
+## Contract và rủi ro
 
 - API compatibility:
-- Data/schema impact:
-- Security impact:
-- Rollback approach:
+- Ảnh hưởng dữ liệu/schema:
+- Ảnh hưởng bảo mật:
+- Cách rollback:
 
-## Verification
+## Kiểm thử
 
 - [ ] `pytest -q`
-- [ ] Manual behavior checked when applicable
-- [ ] Documentation updated
-- [ ] No secrets or generated artifacts included
+- [ ] Kiểm tra thủ công
+- [ ] Cập nhật tài liệu
+- [ ] Không có secret/artifact local
 
-## Out of scope
+## Ngoài phạm vi
 
-<!-- List deliberate follow-up work. -->
+<!-- Follow-up chưa làm -->
+
