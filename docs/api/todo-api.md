@@ -1,4 +1,4 @@
-# API Contract của Todo
+# Hợp đồng API của Todo
 
 ## Quy ước
 
@@ -8,7 +8,7 @@
 - ID do database sinh.
 - Datetime được serialize dạng ISO.
 
-## Representation
+## Biểu diễn dữ liệu
 
 ```json
 {
@@ -68,7 +68,6 @@ Chỉ field xuất hiện được cập nhật. Field bỏ qua giữ nguyên. T
 - `204 No Content`: xóa vĩnh viễn.
 - `404`: ID không tồn tại.
 
-## Compatibility
+## Khả năng tương thích
 
 Xóa/đổi tên response field, đổi kiểu hoặc enum, biến field tùy chọn thành bắt buộc, đổi status code, delete semantics hoặc filter đều là breaking change và cần regression test.
-

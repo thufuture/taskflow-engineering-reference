@@ -19,7 +19,7 @@ Test bảo vệ API contract, cô lập dữ liệu và giúp refactor an toàn.
 | Delete | có | path | có | delete lặp |
 | Health | có | n/a | n/a | liveness |
 
-## Regression test
+## Kiểm thử hồi quy
 
 Reproduce nhỏ nhất; đặt tên theo hành vi; arrange tối thiểu; assert status/response; assert persisted state; xác minh fail trước fix và pass sau fix.
 
@@ -39,4 +39,3 @@ Luôn chạy full suite trước review.
 ## Khoảng trống
 
 Combined filter, ordering, malformed payload, invalid enum, PATCH null/omission, DB failure, concurrency và security test khi có auth.
-

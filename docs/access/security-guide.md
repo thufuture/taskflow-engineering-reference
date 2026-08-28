@@ -4,7 +4,7 @@
 
 TaskFlow là ứng dụng tham chiếu local, chưa có authentication hoặc authorization. Bất kỳ caller nào truy cập API đều có thể đọc, tạo, sửa và xóa mọi Todo. Không expose trực tiếp ra Internet.
 
-## Trust boundary
+## Ranh giới tin cậy
 
 ```text
 Client local được tin cậy -> TaskFlow API -> Database cấu hình
@@ -20,7 +20,7 @@ Không có identity, tenant, role hoặc row ownership. Chỉ thêm login UI kh�
 
 Ứng dụng đọc process environment. Production phải inject secret bằng secret manager của platform.
 
-## Control hiện có
+## Biện pháp kiểm soát hiện có
 
 - Pydantic validate structured input.
 - SQLAlchemy ORM tạo parameterized SQL.
@@ -38,7 +38,7 @@ Không có identity, tenant, role hoặc row ownership. Chỉ thêm login UI kh�
 - chưa có dependency scanning gate;
 - chưa có DB readiness.
 
-## Quy tắc secret
+## Quy tắc thông tin bí mật
 
 1. Không commit `.env`, token, private key hoặc production URL.
 2. `.env.example` chỉ chứa placeholder an toàn.
@@ -50,11 +50,11 @@ Không có identity, tenant, role hoặc row ownership. Chỉ thêm login UI kh�
 
 Chỉ dùng dữ liệu giả hoặc không nhạy cảm. Không lưu credential, PII, customer data, incident secret hoặc dữ liệu regulated.
 
-## Gate trước production
+## Điều kiện trước khi đưa lên môi trường thật
 
 Cần token verification, authorization rule, CORS allowlist, HTTPS, managed secrets, production database, Alembic, structured log, correlation ID, limits, dependency scanning, backup/restore và negative authorization tests.
 
-## Câu hỏi security review
+## Câu hỏi rà soát bảo mật
 
 - Ai được gọi endpoint?
 - Caller được truy cập row nào?
@@ -62,4 +62,3 @@ Cần token verification, authorization rule, CORS allowlist, HTTPS, managed sec
 - Request size có giới hạn?
 - Giá trị nào có thể lọt vào log?
 - Operation có cần audit?
-

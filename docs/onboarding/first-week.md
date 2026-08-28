@@ -1,4 +1,4 @@
-# Onboarding kỹ sư tuần đầu
+# Hướng dẫn kỹ sư trong tuần đầu
 
 ## Mục tiêu
 
@@ -31,4 +31,3 @@ Contract ở đâu? Session đóng khi nào? PATCH omission là gì? Missing ID 
 ## Khi cần hỗ trợ
 
 Cung cấp lệnh, expected/actual, traceback đầu, môi trường đã che secret và những cách đã thử.
-

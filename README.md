@@ -1,4 +1,4 @@
-# TaskFlow API Reference
+# Tài liệu tham chiếu API TaskFlow
 
 TaskFlow là dự án API quản lý công việc mẫu, giúp kỹ sư học toàn bộ luồng backend từ HTTP, validation, xử lý nghiệp vụ, lưu database đến kiểm thử. Repo cũng là nguồn chuẩn để kiểm thử đồng bộ GitHub và chatbot có trích dẫn của Ralion.
 
@@ -81,7 +81,7 @@ docs/             # Tài liệu sản phẩm, kỹ thuật và vận hành
 | Quyết định kiến trúc | [ADR-0001](docs/adr/0001-single-service.md) |
 | Quy trình đóng góp | [CONTRIBUTING](CONTRIBUTING.md) |
 
-## Luồng request
+## Luồng yêu cầu
 
 ```text
 Client -> FastAPI route -> Pydantic schema -> SQLAlchemy session
@@ -90,7 +90,6 @@ Client -> FastAPI route -> Pydantic schema -> SQLAlchemy session
 
 Mỗi request nhận một session riêng qua `get_db`. Handler ghi dữ liệu commit sau khi áp dụng thay đổi và refresh entity trước khi trả response.
 
-## Definition of Done
+## Tiêu chí hoàn thành
 
 Một thay đổi chỉ hoàn thành khi hành vi rõ ràng, schema và model nhất quán, có test success/failure, tài liệu cập nhật, đã đánh giá compatibility/security, toàn bộ test pass và không commit secret hay file sinh local.
-

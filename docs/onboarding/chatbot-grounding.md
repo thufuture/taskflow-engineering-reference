@@ -1,4 +1,4 @@
-# Hướng dẫn grounding cho chatbot
+# Hướng dẫn cung cấp ngữ cảnh nguồn cho chatbot
 
 ## Mục đích
 
@@ -40,4 +40,3 @@ Nếu nguồn mâu thuẫn phải báo rõ.
 **User chỉ thấy Todo mình không?** Không. Chưa có identity, owner hoặc authorization.
 
 **Health kiểm tra DB không?** Không. Nó chỉ chứng minh process phản hồi.
-

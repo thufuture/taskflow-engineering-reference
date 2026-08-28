@@ -1,4 +1,4 @@
-# ADR 0001: Dùng một FastAPI service với SQLAlchemy
+# ADR 0001: Dùng một dịch vụ FastAPI với SQLAlchemy
 
 - Trạng thái: Đã chấp nhận
 - Ngày: 2026-08-28
@@ -23,7 +23,6 @@ Dùng một FastAPI application gồm route, schema, model và database. Dùng S
 
 Ưu: trace end-to-end, startup đơn giản, test nhanh. Nhược: SQLite giới hạn write, chưa migration production, DB sync và một failure unit chung.
 
-## Guardrail và điều kiện xem xét lại
+## Rào chắn và điều kiện xem xét lại
 
 Session theo request; tránh cycle; thêm Alembic trước incompatible schema; không dùng SQLite làm production default. Xem xét lại khi lock kéo dài, cần replica, transaction nhiều domain, background work, ownership độc lập hoặc không đạt SLO.
-
